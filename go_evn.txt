@@ -1,0 +1,4 @@
+GOPATH=D:/GitHub/go_code
+
+set GOPATH=D:/GitHub/go_code
+set PATH=%PATH%%GOPATH%\bin\;

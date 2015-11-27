@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"net"
 	"os"
-    "strings"
 )
 
 type ConnectedClient struct {
 	clientIPPort string
 	gsIPPort     string
-    gsConn       net.Conn
 	conn         net.Conn
 }
 
@@ -46,38 +44,6 @@ func Handler(cclient *ConnectedClient, ch_cclients chan *ConnectedClient, messag
 	}
 }
 
-func proccessGSData(cclient *ConnectedClient) {
-    var conn net.Conn = cclient.gsConn
-
-    fmt.Println("Handler gs c is connected from ...", conn.RemoteAddr().String())
-
-    buf := make([]byte, 1024)
-    for {
-        lenght, err := conn.Read(buf)
-        if checkError(err, "Connection") == false {
-            conn.Close()
-            break
-        }
-        if lenght > 0 {
-            buf[lenght] = 0
-        }
-        _, err1 := cclient.conn.Write(buf[0:lenght])
-        if err1 != nil {
-            fmt.Println(err1.Error())
-        }
-    }
-}
-
-func connectGS(service string) (net.Conn) {
-    tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
-    checkError(err, "ResolveTCPAddr")
-    conn, err := net.DialTCP("tcp", nil, tcpAddr)
-    checkError(err, "DialTCP")
-
-    fmt.Println("finish connectGS:" + service)
-
-    return conn
-}
 ////////////////////////////////////////////////////////
 //
 //服务器发送数据的线程
@@ -85,29 +51,19 @@ func connectGS(service string) (net.Conn) {
 //参数
 //      连接字典 conns
 //      数据通道 messages
-// gs_ipport:127.0.0.1:3724
+//
 ////////////////////////////////////////////////////////
 func echoHandler(conns *map[string]*ConnectedClient, ch_cclients chan *ConnectedClient, messages chan string) {
 
 	for {
 		msg := <-messages
 		cclient := <-ch_cclients
-        if cclient.gsConn == nil {
-            fmt.Println("msg:" + msg)
-            if strings.HasPrefix(msg, "gs_ipport:") {
-                cclient.gsIPPort = string(msg[len("gs_ipport:"):])
-                cclient.gsConn = connectGS(cclient.gsIPPort)
-                go proccessGSData(cclient)
-            } 
-            continue
-        }
-      
-		fmt.Println("cclient.gsConn:" + msg)
+		//fmt.Println(msg)
 
 		//for key,value := range *conns {
 
 		//fmt.Println("connection is connected from ...", cclient.clientIPPort)
-		_, err := cclient.gsConn.Write([]byte(msg))
+		_, err := cclient.conn.Write([]byte("game_server_send:" + msg))
 		if err != nil {
 			fmt.Println(err.Error())
 			delete(*conns, cclient.clientIPPort)
@@ -119,7 +75,7 @@ func echoHandler(conns *map[string]*ConnectedClient, ch_cclients chan *Connected
 }
 
 func main() {
-	port := "9090"
+	port := "3724"
 	service := ":" + port //strconv.Itoa(port);
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
 	checkError(err, "ResolveTCPAddr")

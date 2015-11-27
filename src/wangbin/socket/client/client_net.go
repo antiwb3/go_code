@@ -9,7 +9,7 @@ import (
 func chatSend(conn net.Conn){
     
     var input string
-    username := conn.LocalAddr().String()
+   // username := conn.LocalAddr().String()
     for {
         
         fmt.Scanln(&input)
@@ -19,9 +19,9 @@ func chatSend(conn net.Conn){
             os.Exit(0);
         }
         
-        
-        lens,err :=conn.Write([]byte(username + " Say :::" + input))
-        fmt.Println(lens)
+        //username + " Say :::" + 
+        _,err :=conn.Write([]byte(input))
+       // fmt.Println(lens)
         if(err != nil){
             fmt.Println(err.Error())
             conn.Close()
@@ -49,7 +49,7 @@ func main() {
 
     fmt.Printf("finish dialtcp\n")
 
-   //启动客户端发送线程
+    //启动客户端发送线程
     go chatSend(conn)   
     
     //开始客户端轮训
@@ -62,6 +62,7 @@ func main() {
             fmt.Println("Server is dead ...ByeBye")
            // os.Exit(0)
         }
+
         fmt.Println(string(buf[0:lenght]))
         
     }

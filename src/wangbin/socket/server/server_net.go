@@ -96,7 +96,7 @@ func ConnectGS(service string) (net.Conn) {
     return conn
 }
 
-func ProcessClientData(cclient *ConnectedClient, ch_cclients chan *ConnectedClient, messages chan string) {
+func ReceiveGClientData(cclient *ConnectedClient, ch_cclients chan *ConnectedClient, messages chan string) {
 
 	var conn net.Conn = cclient.conn
 
@@ -136,13 +136,7 @@ func ProcessGC2GSData(conns *map[string]*ConnectedClient, ch_cclients chan *Conn
 		cclient := <-ch_cclients
 
         if cclient.gsConn == nil {
-            fmt.Println("msg:" + msg)
-            if strings.HasPrefix(msg, "gs_ipport:") {
-                cclient.gsIPPort = string(msg[len("gs_ipport:"):])
-                cclient.gsConn = ConnectGS(cclient.gsIPPort)
-                go ProccessGSData(cclient)
-            } 
-            continue
+           continue
         }
       
 		fmt.Println("cclient.gsConn:" + msg)
@@ -156,7 +150,6 @@ func ProcessGC2GSData(conns *map[string]*ConnectedClient, ch_cclients chan *Conn
 			delete(*conns, cclient.clientIPPort)
 		}
 	}
-
 }
 
 func ReceiveAClientData(cconn *CommonConnect, ch_cconn chan *CommonConnect, messages chan string) {
@@ -196,16 +189,16 @@ func ProcessAClientData(ch_cconn chan *CommonConnect, messages chan string) {
             }
         } 
       
-        fmt.Println("cclient.gsConn:" + msg)
 
         //for key,value := range *conns {
 
         //fmt.Println("connection is connected from ...", cclient.clientIPPort)
+        /*
         _, err := cclient.gsConn.Write([]byte(msg))
         if err != nil {
             fmt.Println(err.Error())
             delete(*conns, cclient.clientIPPort)
-        }
+        }*/
 
         // }
     }
@@ -251,6 +244,19 @@ func startListenAssistTCP() {
     }
 }
 
+func notifyAClient(id int, address string) {
+    conn := m_aclient[id]
+    if conn == nil {
+        return
+    }
+
+    _, err := conn.Write([]byte("gc_connected:" + address))
+    if err != nil {
+        fmt.Println(err.Error())
+       // delete(*conns, cclient.clientIPPort)
+    }
+}
+
 func main() {
     goto startListenAssistTCP()
 
@@ -276,17 +282,18 @@ func main() {
 
 		fmt.Println("Accepting ...")
 
+        address := conn.RemoteAddr().String()
+        id := getGClientId(address)
+
 		cclient := new(ConnectedClient)
         cclient.conn = conn
-        cclient.clientIPPort = conn.RemoteAddr().String()
+        cclient.clientIPPort = address
+        m_gclient[id] = cclient
+        
+        notifyAClient(id, address)
 
-
-        if cclient.gsIPPort == "" { 
-            fmt.Println("gsIPPort isnil") 
-        }
-
-		conns[conn.RemoteAddr().String()] = cclient
+		//conns[conn.RemoteAddr().String()] = cclient
 		//启动一个新线程
-		go ProcessClientData(cclient, ch_cclients, messages)
+		go ReceiveGClientData(cclient, ch_cclients, messages)
 	}
 }
